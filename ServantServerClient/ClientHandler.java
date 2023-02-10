@@ -1,29 +1,27 @@
-import java.io.*;
-import java.net.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import java.util.Random;
-public class Client {
-    public int port;
-    public String address = null ;
-    public ObjectInputStream objectInput = null;
-    public ObjectOutputStream objectOutput = null;
+public class ClientHandler {
+    private ObjectInputStream objectInput = null;
+    private ObjectOutputStream objectOutput = null;
+    private Socket clientSideSocket;
 
-    public Socket clientSideSocket = null;
+    public ClientHandler(Socket clientSideSocket){
+        this.clientSideSocket = clientSideSocket;
+    }
 
-
-    public Client(String address, int port){
-        this.address = address;
-        this.port = port;
+    public void play(){
         Ball b = new Ball();
         try{
-
-            clientSideSocket = new Socket(address, port);
 
             objectOutput = new ObjectOutputStream(clientSideSocket.getOutputStream());
             objectInput = new ObjectInputStream(new BufferedInputStream(clientSideSocket.getInputStream()));
 
-//            Start toss
             b.tossValue = generateRandomNumber();
             objectOutput.writeObject(b);
             while(true){
@@ -63,26 +61,14 @@ public class Client {
                 }
                 TimeUnit.SECONDS.sleep(2);
             }
-
-
-
-
         }
         catch(Exception i){
-            System.out.println(i);
+            throw new RuntimeException(i);
         }
-
-
     }
     public int generateRandomNumber() {
         Random rand = new Random();
         return rand.nextInt(2);
     }
 
-
-    public static void main(String[] args){
-        String host = args[0];
-        int port = Integer.parseInt(args[1]);
-        Client client = new Client(host, port);
-    }
 }

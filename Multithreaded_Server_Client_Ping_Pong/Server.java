@@ -4,14 +4,7 @@ import java.net.ServerSocket;
 import java.util.Random;
 
 public class Server {
-
-    public String address;
-//    public Socket serverSideSocket = null;
     public ServerSocket server = null;
-
-    public Server() {
-
-    }
 
     public Server(int port) {
 
@@ -40,19 +33,8 @@ public class Server {
     }
 
 
-
     public static void main(String[] args) {
-        Server server = new Server(5050);
+        int port = Integer.parseInt(args[0]);
+        Server server = new Server(port);
     }
 }
-
-
-
-
-//
-//
-////
-////
-////    public Server() throws IOException {
-////    }
-//}

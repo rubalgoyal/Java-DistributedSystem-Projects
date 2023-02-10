@@ -1,23 +1,21 @@
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.lang.Runnable;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-public class ServerClientHandler implements  Runnable{
+public class ServerHandler {
     private Socket clientSocket;
     private int gameNumber;
 
     private Ball b;
-    public ServerClientHandler(Socket incomingClientSocket, int gameNumber){
+    public ServerHandler(Socket incomingClientSocket, int gameNumber){
         this.clientSocket = incomingClientSocket;
         this.gameNumber = gameNumber;
     }
-    @Override
-    public void run() {
+
+    public void play() {
         try {
 
             ObjectInputStream objectInput = new ObjectInputStream(clientSocket.getInputStream());
@@ -73,6 +71,7 @@ public class ServerClientHandler implements  Runnable{
         catch (Exception i) {
             System.out.println(i);
         }
+
     }
 
     public int generateRandomNumber(){
@@ -80,3 +79,5 @@ public class ServerClientHandler implements  Runnable{
         return rand.nextInt(2);
     }
 }
+
+
