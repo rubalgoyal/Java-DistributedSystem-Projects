@@ -6,6 +6,36 @@ Rubal Goyal (Graduate student, Sp23 - CS 555 - Distributed Systems )**<br>
 - Rubal Goyal: Server and Client Development, Design, Readme, Requirement Discussions, Video Recording
 - Brett Weaver: Server Development support, Makefile, Gradle build, Discussions, Readme, Requirement Discussions, Video Recording
 
+## Problem Statement
+In this project, we will build a simplified chat server that can support multiple clients over the Internet. We are (sort of) going to mimic popular chat apps like Slack and Discord.
+
+Here is a simple list of commands and behaviors I want your chat server to implement:
+command description<br>
+- [ ] nick <nickname> Pick a nickname for the user
+- [ ] list List channels and number of users
+- [ ] join <channel> Join a channel
+- [ ] leave <channel> Leave a channel
+- [ ] post <channel> <content> Post a message to a channel
+
+### Requirements
+- Develop a simple text-based client to demonstrate the functionality of you chat server.
+- A client must have picked a nickname to join a channel. They don’t need a nickname to list channels. If they update their nickname while using the software, it should be reflected in their posts received
+by other clients.
+- A client must have joined a channel to receive or send messages using the channel.
+- The number of users displayed to the client must be the number of active users who are members of the channel.
+- A message sent to a channel must be delivered to every client that is part of the channel.
+- If a client’s connection fails during the interaction and it doesn’t leave the channel gracefully, it must still be removed from the list of users in the channel.
+- The server must support mutiple concurrent users.
+- Add configurable log levels. There are many Java/Kotlin logging libraries to choose from. Limit the number of JVM threads being started here. If you choose to use coroutines in your solution, the coroutine runtime will do this for you. If you choose a coroutine solution, you must not use
+blocking calls.
+- Clean up unused connections and sockets. Not doing so creates resources leaks that may cause longrunning
+servers to crash.
+- Shut down the server gracefully after it has been idle for a period of time. You can decide what time
+period and what "idle" means (within reason). Make sure to document both in your README.
+- Add a shutdown hook to gracefully stop the server if it receives an interrupt signal.
+- Persistance is not necessary. It’s perfectly fine to comepletely restart if the server is killed.
+- Use either an object-based protocol or a RPC-based protocol.
+- Extra Credit: Implement your client program in a non-JVM language of your choice.
 
 ## Project Architecture
 We have implemented the GRPC for Server-Client communication. We have programmed the Server side code in `Java` and Client side code in `Python` languages. The structure of the code is as below:
