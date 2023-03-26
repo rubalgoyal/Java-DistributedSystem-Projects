@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+
+
+message User{
+  int32 userID = 1;
+  string loginName = 2;
+  string realName = 3;
+  string password = 4;
+  string oldLoginName = 5;
+}
+
+message ServerActions{
+  int32 userID = 1;
+  string loginName = 2;
+  string realName = 3;
+  string password = 4;
+  string oldLoginName = 5;
+  string createdOn = 6;
+  bool alreadyExist = 7;
+  bool isDeleted = 8;
+  bool isPassMatch = 9;
+}
+
+message EmptyRequest{}
+message StringResponse{
+  string info = 1;
+}
+
+service UserAuthenticationService{
+  rpc create(User) returns (ServerActions);
+  rpc modify(User) returns (ServerActions);
+  rpc delete(User) returns(ServerActions);
+  rpc lookup(User) returns(ServerActions);
+  rpc reverseLookup(User) returns(ServerActions);
+  rpc listLogins(EmptyRequest) returns (StringResponse);
+  rpc listIds(EmptyRequest) returns (StringResponse);
+  rpc listAllInfo(EmptyRequest) returns (StringResponse);
+}

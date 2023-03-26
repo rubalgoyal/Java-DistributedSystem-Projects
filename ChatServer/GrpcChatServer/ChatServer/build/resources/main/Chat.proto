@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+message ChannelMembers {
+  string ChannelName = 1;
+  string numberOfClients = 2;
+}
+
+message ClientChannelAction{
+  string nickName = 1;
+  string channelName = 2;
+  string clientId = 3;
+
+}
+
+message ServerChannelActionMessage{
+  string message = 1;
+}
+
+message ClientPostMessage{
+  string clientId = 1;
+  string nickName = 2;
+  string channelName = 3;
+  string content = 4;
+
+}
+
+service ChatService {
+  rpc list(ClientChannelAction) returns (stream ServerChannelActionMessage);
+  rpc join(ClientChannelAction) returns (stream ServerChannelActionMessage);
+  rpc leave(ClientChannelAction) returns (stream ServerChannelActionMessage);
+  rpc post(ClientPostMessage) returns (stream ServerChannelActionMessage);
+  rpc help(ClientChannelAction) returns (stream ServerChannelActionMessage);
+  rpc receive(ClientChannelAction) returns (stream ServerChannelActionMessage);
+}
