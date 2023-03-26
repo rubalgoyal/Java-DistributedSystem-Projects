@@ -19,10 +19,31 @@ Below image explains the implementation of Server and Client. For each server an
 
 ![IMG_9402](https://user-images.githubusercontent.com/105172154/224414938-3a8a676f-5904-4974-a627-5310dbc1e5b6.png)
 
-## Dependencies
-To execute the code, you need to have some applications/software installed on your machine. We used following version of JDK and Gradle.
-![Screenshot 2023-03-10 at 1 10 03 PM](https://user-images.githubusercontent.com/105172154/224418290-a7445a42-2e00-4730-b826-3efc8d94a7e1.png)
+We have included all the dependecies required in `build.gradle` as below. You wouldn't need to make any changes in the `build.gradle` to run the project from the terminal.
 
+```
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+    implementation group: 'com.google.protobuf', name: 'protobuf-java', version: '4.0.0-rc-2'
+    implementation group: 'com.google.protobuf', name: 'protobuf-java-util', version: '4.0.0-rc-2'
+
+    // https://mvnrepository.com/artifact/io.grpc/grpc-all
+    implementation group: 'io.grpc', name: 'grpc-all', version: '1.53.0'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    implementation 'io.grpc:grpc-netty-shaded:1.53.0'
+    implementation 'io.grpc:grpc-protobuf:1.53.0'
+    implementation 'io.grpc:grpc-stub:1.53.0'
+
+    implementation 'commons-cli:commons-cli:1.5.0'
+    implementation 'commons-codec:commons-codec:1.15'
+
+    compileOnly("javax.annotation:javax.annotation-api:1.3.2")
+
+}
+```
 
 ## Instructions to execute code
 ### Server Execution
