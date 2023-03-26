@@ -19,6 +19,8 @@ Below image explains the implementation of Server and Client. For each server an
 
 ![IMG_9402](https://user-images.githubusercontent.com/105172154/224414938-3a8a676f-5904-4974-a627-5310dbc1e5b6.png)
 
+## Dependencies
+
 We have included all the dependecies required in `build.gradle` as below. You wouldn't need to make any changes in the `build.gradle` to run the project from the terminal.
 
 ```
