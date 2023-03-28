@@ -12,3 +12,7 @@ KeyStore keyStore = KeyStore.getInstance("JKS");
 keyStore.load(keyPath, keyStorePassword.toCharArray());
 ```
 
+## Execution
+```
+make runServer @port=5051 @certPath=certificate.cer @keyPath=identity.pem.pkcs8
+```
