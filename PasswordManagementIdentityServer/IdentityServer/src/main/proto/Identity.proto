@@ -36,4 +36,5 @@ service UserAuthenticationService{
   rpc listLogins(EmptyRequest) returns (StringResponse);
   rpc listIds(EmptyRequest) returns (StringResponse);
   rpc listAllInfo(EmptyRequest) returns (StringResponse);
+  rpc help(EmptyRequest) returns (StringResponse);
 }
