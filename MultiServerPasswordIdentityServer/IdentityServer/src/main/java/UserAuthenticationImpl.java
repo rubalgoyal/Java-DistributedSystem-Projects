@@ -1,53 +1,76 @@
+import io.grpc.ManagedChannel;
+import io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import org.checkerframework.checker.signature.qual.CanonicalNameOrEmpty;
 
+import java.io.File;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
+
+import javax.net.ssl.SSLException;
 
 public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAuthenticationServiceImplBase {
-    ConcurrentHashMap<String, UserModel> inSessionUser = new ConcurrentHashMap<>();
-    private int maxUserId = 0;
+
+    private IdentityServer identityServer;
+    private Logger logger =  Logger.getLogger("");
+    private ArrayList<String> lockUserIds = new ArrayList<String>(); // Set of users currently being written to, block concurrent writes
+
+    public UserAuthenticationImpl(){}
+
+
+    public UserAuthenticationImpl(IdentityServer identityServer){
+        this.identityServer = identityServer;
+    }
 
     private UserModel createUserId(String loginName, String realName, String password) throws NoSuchAlgorithmException {
         String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
-        UserModel newUser = new UserModel(0,loginName, realName, password,null, date,false, null);
+        int nextId = IdentityUtil.getLastUserId();
+        UserModel newUser = new UserModel(nextId,loginName, realName, password,null, date,false, null);
         String passwordHash = IdentityUtil.generateHash(password, newUser);
         newUser.setPassword(passwordHash);
-        IdentityUtil.insertUser(newUser, String.valueOf(newUser.getUserId()),true);
+
+        identityServer.inSessionUser.put(String.valueOf(newUser.getUserId()), newUser);
+        boolean isSuccessWrite = false;
+        while (!isSuccessWrite)
+            isSuccessWrite =  IdentityUtil.bulkInsert(identityServer.inSessionUser, true);
+
+        identityServer.inSessionUser.remove(String.valueOf(newUser.getUserId()));
         return newUser;
     }
-    @Override
-    public void create(Identity.User request, StreamObserver<Identity.ServerActions> responseObserver)  {
+    
+
+    public Identity.WriteResponse.CreateUserResponse create(Identity.WriteRequest.CreateUserRequest request)  {
         String loginName = request.getLoginName();
         String realName = request.getRealName();
         String password = request.getPassword();
         try {
-            Identity.ServerActions response = null;
             if(IdentityUtil.isUserExist(loginName)){
                 System.out.println("User already exist");
-                response = Identity.ServerActions.newBuilder().setAlreadyExist(true).build();
-                responseObserver.onNext(response);
+                return Identity.WriteResponse.CreateUserResponse.newBuilder().setAlreadyExist(true).build();
             }
             else{
                 UserModel users = createUserId(loginName, realName, password);
-                response = Identity.ServerActions.newBuilder().setUserID(users.getUserId()).build();
-                responseObserver.onNext(response);
+                return Identity.WriteResponse.CreateUserResponse.newBuilder().setUserID(users.getUserId()).build();
             }
         }
         catch (Exception e){
             System.out.println(e);
-        }
-        finally {
-            responseObserver.onCompleted();
+            return null;
         }
     }
-    @Override
-    public void modify(Identity.User request, StreamObserver<Identity.ServerActions> responseObserver) {
+    
+
+    public Identity.WriteResponse.ModifyUserResponse modify(Identity.WriteRequest.ModifyUserRequest request) {
         String oldLoginName = request.getOldLoginName();
         String newLoginName = request.getLoginName();
         String password = request.getPassword();
-        Identity.ServerActions response = null;
+
         if(IdentityUtil.isUserExist(oldLoginName)){
             if(!IdentityUtil.isUserExist(newLoginName)){
                 UserModel nuser = IdentityUtil.returnUser(oldLoginName);
@@ -56,80 +79,63 @@ public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAu
                     nuser.setOldLoginName(oldLoginName);
                     nuser.setLoginName(newLoginName);
                     IdentityUtil.insertUser(nuser, String.valueOf(nuser.getUserId()), false);
-                    response = Identity.ServerActions.newBuilder().setAlreadyExist(false).setIsPassMatch(true).setLoginName(nuser.getLoginName()).build();
+                    return Identity.WriteResponse.ModifyUserResponse.newBuilder().setAlreadyExist(false).setIsPassMatch(true).setLoginName(nuser.getLoginName()).build();
                 }
                 else{
-                    response = Identity.ServerActions.newBuilder().setAlreadyExist(false).setIsPassMatch(false).build();
+                    return Identity.WriteResponse.ModifyUserResponse.newBuilder().setAlreadyExist(false).setIsPassMatch(false).build();
                 }
-                responseObserver.onNext(response);
             }
             else{
-                response = Identity.ServerActions.newBuilder().setAlreadyExist(true).build();
-                responseObserver.onNext(response);
+                return Identity.WriteResponse.ModifyUserResponse.newBuilder().setAlreadyExist(true).build();
             }
         }
         else{
-            response = Identity.ServerActions.newBuilder().setAlreadyExist(false).build();
-            responseObserver.onNext(response);
+            return Identity.WriteResponse.ModifyUserResponse.newBuilder().setAlreadyExist(false).build();
         }
-        responseObserver.onCompleted();
     }
 
-    @Override
-    public void delete(Identity.User request, StreamObserver<Identity.ServerActions> responseObserver) {
+
+    public Identity.WriteResponse.DeleteUserResponse delete(Identity.WriteRequest.DeleteUserRequest request) {
         String loginName = request.getLoginName();
         String password = request.getPassword();
-        Identity.ServerActions response = null;
+
         UserModel nuser = IdentityUtil.returnUser(loginName);
         if(nuser != null && IdentityUtil.isPasswordMatch(nuser, password))
-            response = Identity.ServerActions.newBuilder().setIsDeleted(IdentityUtil.deleteUser(loginName)).setIsPassMatch(true).build();
+            return Identity.WriteResponse.DeleteUserResponse.newBuilder().setIsDeleted(IdentityUtil.deleteUser(loginName)).setIsPassMatch(true).build();
         else if(nuser != null)
-            response = Identity.ServerActions.newBuilder().setLoginName(loginName).build();
+            return Identity.WriteResponse.DeleteUserResponse.newBuilder().setLoginName(loginName).build();
         else
-            response = Identity.ServerActions.newBuilder().setIsPassMatch(false).build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+            return Identity.WriteResponse.DeleteUserResponse.newBuilder().setIsPassMatch(false).build();
     }
 
-    @Override
-    public void lookup(Identity.User request, StreamObserver<Identity.ServerActions> responseObserver) {
+
+    public Identity.ReadResponse.IsUserExistResponse lookup(Identity.ReadRequest.LookUpLoginNameRequest request) {
         String loginName = request.getLoginName();
-        Identity.ServerActions response = null;
         if(IdentityUtil.isUserExist(loginName)){
             UserModel user = IdentityUtil.returnUser(loginName);
-            response = Identity.ServerActions.newBuilder()
-                    .setUserID(user.getUserId()).setAlreadyExist(true).setLoginName(user.getLoginName())
-                    .setRealName(user.getRealName())
-                    .setCreatedOn(user.getCreatedOn()).setPassword(user.getPassword()).build();
-            responseObserver.onNext(response);
+            String userString = IdentityUtil.convertUserToString(user);
+            return Identity.ReadResponse.IsUserExistResponse.newBuilder().setIsUserExist(true).setPrintMessage(userString).build();
         }
         else {
-            response = Identity.ServerActions.newBuilder().setAlreadyExist(false).build();
-            responseObserver.onNext(response);
+            return Identity.ReadResponse.IsUserExistResponse.newBuilder().setIsUserExist(false).build();
         }
-        responseObserver.onCompleted();
     }
 
-    @Override
-    public void reverseLookup(Identity.User request, StreamObserver<Identity.ServerActions> responseObserver){
+
+    public Identity.ReadResponse.IsUserExistResponse reverseLookup(Identity.ReadRequest.LookUpUserIdRequest request){
         int userId = request.getUserID();
-        Identity.ServerActions response = null;
         if(IdentityUtil.isUserExist(userId)){
             UserModel user = IdentityUtil.returnUser(userId);
-            response = Identity.ServerActions.newBuilder()
-                    .setUserID(user.getUserId()).setAlreadyExist(true).setLoginName(user.getLoginName())
-                    .setRealName(user.getRealName())
-                    .setCreatedOn(user.getCreatedOn()).setPassword(user.getPassword()).build();
-            responseObserver.onNext(response);
+            String userString = IdentityUtil.convertUserToString(user);
+            return Identity.ReadResponse.IsUserExistResponse.newBuilder().setIsUserExist(true).setPrintMessage(userString).build();
         }
         else {
-            response = Identity.ServerActions.newBuilder().setAlreadyExist(false).build();
-            responseObserver.onNext(response);
+            return Identity.ReadResponse.IsUserExistResponse.newBuilder().setIsUserExist(false).build();
         }
-        responseObserver.onCompleted();
     }
-    @Override
-    public void listLogins(Identity.EmptyRequest request, StreamObserver<Identity.StringResponse> responseObserver){
+
+
+    public Identity.ReadResponse.UserLoginsPrintResponse listLogins(){
         ConcurrentHashMap<String, UserModel> allUsers = IdentityUtil.fetchAllUsers();
         StringBuilder stringBuilder = new StringBuilder();
         if(allUsers.isEmpty())
@@ -141,13 +147,10 @@ public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAu
                     }
                 );
         }
-        Identity.StringResponse response = Identity.StringResponse.newBuilder().setInfo(stringBuilder.toString()).build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+        return Identity.ReadResponse.UserLoginsPrintResponse.newBuilder().setUserLoginsPrint(stringBuilder.toString()).build();
     }
 
-    @Override
-    public void listIds(Identity.EmptyRequest request, StreamObserver<Identity.StringResponse> responseObserver){
+    public Identity.ReadResponse.UserIdsPrintResponse listIds(){
         ConcurrentHashMap<String, UserModel> allUsers = IdentityUtil.fetchAllUsers();
         StringBuilder stringBuilder = new StringBuilder();
         if(allUsers.isEmpty())
@@ -159,19 +162,17 @@ public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAu
                     }
             );
         }
-        Identity.StringResponse response = Identity.StringResponse.newBuilder().setInfo(stringBuilder.toString()).build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+        return Identity.ReadResponse.UserIdsPrintResponse.newBuilder().setUserIdsPrint(stringBuilder.toString()).build();
     }
-    @Override
-    public void listAllInfo(Identity.EmptyRequest request, StreamObserver<Identity.StringResponse> responseObserver) {
+
+    public Identity.ReadResponse.AllInfoPrintResponse listAllInfo() {
         ConcurrentHashMap<String, UserModel> allUsers = IdentityUtil.fetchAllUsers();
         StringBuilder stringBuilder = new StringBuilder();
         if (allUsers.isEmpty())
             stringBuilder.append("There is no user in database");
         else {
             stringBuilder.append("Following is the user's info \n");
-            stringBuilder.append("User Id\t\tLogin Name\t\tReal Name\t\tOld Login Name\t\tCreated On\t\tPassword\t\t\t\tSalt \n");
+            stringBuilder.append("User Id\t\tLogin Name\t\tReal Name\t\tOld Login Name\t\tCreated On\n");
             stringBuilder.append(new String(new char[150]).replace("\0", "-")+"\n");
             allUsers.forEach((key, value) -> {
                         stringBuilder.append(value.getUserId() + "\t\t"
@@ -179,15 +180,12 @@ public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAu
                                 + value.getRealName() + "\t\t"
                                 + value.getOldLoginName() + "\t\t"
                                 + value.getCreatedOn() + "\t\t"
-                                + value.getPassword() + "\t\t"
-                                + value.getSalt() +"\n"
+                                +"\n"
                         );
                     }
             );
         }
-        Identity.StringResponse response = Identity.StringResponse.newBuilder().setInfo(stringBuilder.toString()).build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+        return Identity.ReadResponse.AllInfoPrintResponse.newBuilder().setAllInfoPrint(stringBuilder.toString()).build();
     }
 
     private String showHelp(){
@@ -208,11 +206,175 @@ public class UserAuthenticationImpl extends UserAuthenticationServiceGrpc.UserAu
         return printMessage.toString();
     }
 
-    @Override
-    public void help(Identity.EmptyRequest request, StreamObserver<Identity.StringResponse> responseObserver){
-        Identity.StringResponse response = Identity.StringResponse.newBuilder().setInfo(showHelp()).build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
 
+    public Identity.ReadResponse.HelpResponse help(){
+        return Identity.ReadResponse.HelpResponse.newBuilder().setHelpMessage(showHelp()).build();
+    }
+
+    @Override
+    public void writeRequest(Identity.WriteRequest request, StreamObserver<Identity.WriteResponse> responseObserver) {
+        logger = Logger.getLogger(getLoggerName());
+        logger.info("Received WriteRequest");
+        // Initialize write response
+        Identity.WriteResponse writeResponse = null;
+
+        // If node that received this is a coordinator, then forward it to all children
+        if (identityServer.isCoordinator()) {
+            logger.info("This node is a coordinator, forwarding to child nodes");
+
+            // Check if user is not in blocking set
+            String loginName = getWriteRequestLogin(request);
+            while (this.lockUserIds.contains(loginName)) {
+                logger.info("User " + loginName + " is currently being written to, blocking write...");
+            }
+
+            lockUserIds.add(loginName);
+            
+            logger.info("User " + loginName + " does not have a lock, forwarding to child nodes...");
+            writeResponse = sendWriteToChildNodes(request);
+
+            lockUserIds.remove(loginName);
+            logger.info("Removing lock on " + loginName);
+
+        } else {
+            logger.info("This node is a child node, getting response");
+            // Get the correct response for the request
+            if (request.hasCreateUserRequest()) {
+                writeResponse = Identity.WriteResponse.newBuilder().setCreateUserResponse(create(request.getCreateUserRequest())).build();
+            }
+    
+            if (request.hasModifyUserRequest()) {
+                writeResponse = Identity.WriteResponse.newBuilder().setModifyUserResponse(modify(request.getModifyUserRequest())).build();
+            }
+    
+            if (request.hasDeleteUserRequest()) {
+                writeResponse = Identity.WriteResponse.newBuilder().setDeleteUserResponse(delete(request.getDeleteUserRequest())).build();
+            }
+        }
+
+        responseObserver.onNext(writeResponse);
+        responseObserver.onCompleted();
+    }
+
+    private String getWriteRequestLogin(Identity.WriteRequest request) {
+        String loginName = null;
+        if (request.hasCreateUserRequest()) {
+            loginName = request.getCreateUserRequest().getLoginName();
+        }
+
+        if (request.hasModifyUserRequest()) {
+            loginName = request.getModifyUserRequest().getOldLoginName();
+        }
+
+        if (request.hasDeleteUserRequest()) {
+            loginName = request.getDeleteUserRequest().getLoginName();
+        }
+
+        return loginName;
+    }
+
+    private String getReadRequestLogin(Identity.ReadRequest request) {
+        String loginName = null;
+        if (request.hasLookUpLoginNameRequest()) {
+            loginName = request.getLookUpLoginNameRequest().getLoginName();
+        }
+
+        if (request.hasLookUpUserIdRequest()) {
+
+            loginName = IdentityUtil.returnUser(request.getLookUpUserIdRequest().getUserID()).getLoginName();
+        }
+
+        return loginName;
+    }
+
+    @Override
+    public void readRequest(Identity.ReadRequest request, StreamObserver<Identity.ReadResponse> responseObserver) {
+        logger = Logger.getLogger(getLoggerName());
+        logger.info("Received ReadRequest");
+        // Initialize read response
+        Identity.ReadResponse readResponse = null;
+
+        // Check if user is not in blocking set
+        String loginName = getReadRequestLogin(request);
+        while (this.lockUserIds.contains(loginName)) {
+            logger.info("User " + loginName + " is currently being written to, blocking read...");
+        }
+
+        // Get the correct response for the request
+        if (request.hasLookUpLoginNameRequest()) {
+            readResponse = Identity.ReadResponse.newBuilder().setIsUserExistResponse(lookup(request.getLookUpLoginNameRequest())).build();
+        }
+
+        if (request.hasLookUpUserIdRequest()) {
+            readResponse = Identity.ReadResponse.newBuilder().setIsUserExistResponse(reverseLookup(request.getLookUpUserIdRequest())).build();
+        }
+
+        if (request.getHelpRequest() == true) {
+            readResponse = Identity.ReadResponse.newBuilder().setHelpResponse(help()).build();
+        }
+
+        if (request.getListIdsRequest() == true) {
+            readResponse = Identity.ReadResponse.newBuilder().setUserIdsPrintResponse(listIds()).build();
+        }
+
+        if (request.getListLoginsRequest() == true) {
+            readResponse = Identity.ReadResponse.newBuilder().setUserLoginsPrintResponse(listLogins()).build();
+        }
+
+        if (request.getAllInfoRequest() == true) {
+            readResponse = Identity.ReadResponse.newBuilder().setAllInfoPrintResponse(listAllInfo()).build();
+        }
+
+        responseObserver.onNext(readResponse);
+        responseObserver.onCompleted();
+    }
+
+    
+    
+    private Identity.WriteResponse sendWriteToChildNodes(Identity.WriteRequest writeRequest) {
+        ManagedChannel serverChannel;
+        Identity.WriteResponse response = null;
+
+        for (int nodeId : identityServer.getNodes().keySet()) {
+            int port = identityServer.getNodes().get(nodeId).getPort();
+            if (port != identityServer.getPort()) {
+                logger.info("Sending WriteRequest to port " + port);
+                try {
+                    serverChannel = NettyChannelBuilder.forAddress(identityServer.getAddress(), port).sslContext(
+                        GrpcSslContexts.forClient()
+                                .trustManager(new File(identityServer.getCertiFilePath()))
+                                .build()
+                    ).build();
+    
+                    // TODO: Maybe make asynch?
+                    UserAuthenticationServiceGrpc.UserAuthenticationServiceBlockingStub stub = UserAuthenticationServiceGrpc.newBlockingStub(serverChannel);
+    
+                    // Forward request
+                    response =  stub.writeRequest(writeRequest); // TODO: can return immediately if all child nodes using same redis instance, otherwise forward write to each. 
+                    
+                    serverChannel.shutdown();
+                    return response;
+    
+                } catch (SSLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return response;
+    }
+
+    private String getNodesPort(){
+        String port = "{";
+        for(int nodeId : identityServer.getNodes().keySet())
+            port  = port + Integer.toString(identityServer.getNodes().get(nodeId).getPort()) + " ,";
+        return port + "}";
+    }
+
+    private String getLoggerName(){
+        String name = "ChildNode";
+        if ( identityServer.isCoordinator() )
+            name = "Coordinator";
+
+        return name;
     }
 }

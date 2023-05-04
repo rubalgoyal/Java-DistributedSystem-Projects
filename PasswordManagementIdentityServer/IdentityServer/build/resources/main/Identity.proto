@@ -1,40 +1,75 @@
 syntax = "proto3";
 
-
-
 message User{
-  int32 userID = 1;
-  string loginName = 2;
-  string realName = 3;
-  string password = 4;
-  string oldLoginName = 5;
+  string loginName = 1;
+  string realName = 2;
+  string password = 3;
+  string oldLoginName = 4;
 }
 
-message ServerActions{
+message LookUpUserId{
   int32 userID = 1;
-  string loginName = 2;
-  string realName = 3;
-  string password = 4;
-  string oldLoginName = 5;
-  string createdOn = 6;
-  bool alreadyExist = 7;
-  bool isDeleted = 8;
-  bool isPassMatch = 9;
+}
+
+message LookUpLoginName{
+  string loginName = 1;
+}
+
+message DeleteUserName{
+  string loginName = 1;
+  string password = 2;
+}
+
+message NewUserId{
+  int32 userID = 1;
+  bool alreadyExist = 2;
+}
+
+message ModifyUser{
+  string loginName = 1;
+  bool alreadyExist = 2;
+  bool isDeleted = 3;
+  bool isPassMatch = 4;
+}
+
+message DeleteUser{
+  string loginName = 1;
+  bool alreadyExist = 2;
+  bool isDeleted = 3;
+  bool isPassMatch = 4;
 }
 
 message EmptyRequest{}
-message StringResponse{
-  string info = 1;
+
+message HelpResponse{
+  string helpMessage = 1;
+}
+
+message AllInfoPrint{
+  string allInfoPrint = 1;
+}
+
+message UserIdsPrint{
+  string userIdsPrint = 1;
+}
+
+message UserLoginsPrint{
+  string userLoginsPrint = 1;
+}
+
+message IsUserExist{
+  bool isUserExist = 1;
+  string printMessage = 2;
 }
 
 service UserAuthenticationService{
-  rpc create(User) returns (ServerActions);
-  rpc modify(User) returns (ServerActions);
-  rpc delete(User) returns(ServerActions);
-  rpc lookup(User) returns(ServerActions);
-  rpc reverseLookup(User) returns(ServerActions);
-  rpc listLogins(EmptyRequest) returns (StringResponse);
-  rpc listIds(EmptyRequest) returns (StringResponse);
-  rpc listAllInfo(EmptyRequest) returns (StringResponse);
-  rpc help(EmptyRequest) returns (StringResponse);
+  rpc create(User) returns (NewUserId);
+  rpc modify(User) returns (ModifyUser);
+  rpc delete(DeleteUserName) returns(DeleteUser);
+  rpc lookup(LookUpLoginName) returns(IsUserExist);
+  rpc reverseLookup(LookUpUserId) returns(IsUserExist);
+  rpc listLogins(EmptyRequest) returns (UserLoginsPrint);
+  rpc listIds(EmptyRequest) returns (UserIdsPrint);
+  rpc listAllInfo(EmptyRequest) returns (AllInfoPrint);
+  rpc help(EmptyRequest) returns (HelpResponse);
 }

@@ -5,7 +5,7 @@ GRADLEW			?=	./gradlew
 @keyPath		?=	default_value
 @privateKey		?=	default_value
 
-build:
+build: 
 		@echo	"build"
 		$(GRADLEW)	clean	shadowJar
 

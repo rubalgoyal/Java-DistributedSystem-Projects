@@ -3,19 +3,71 @@ import io.grpc.netty.NettyServerBuilder;
 import io.netty.handler.ssl.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IdentityServer {
-    private static int port;
-    public Server server;
+    private int serverId;
+    private boolean isCoordinator;
+    private int port;
+    private String address;
+    private Server server;
+
     private String certiFilePath;
     private String keyFilePath;
-    private boolean isAwaitTermination;
+    // This one has a list of the nodes. From here we can get the Child node easily.
+    private HashMap<Integer, IdentityServer> nodes;
+    private int coordinatorPort;
+    public ConcurrentHashMap<String, UserModel> inSessionUser = new ConcurrentHashMap<>();
 
-    public IdentityServer(int port, String certiFilePath, String keyFilePath, boolean isAwaitTermination){
+    public int getServerId() {
+        return serverId;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public boolean isCoordinator() {
+        return isCoordinator;
+    }
+
+    public void setCoordinator(boolean coordinator) {
+        isCoordinator = coordinator;
+    }
+
+    public void setCoordinatorPort(int coordinatorPort) {
+        this.coordinatorPort = coordinatorPort;
+    }
+
+    public void setNodes(HashMap<Integer, IdentityServer> nodes) {
+        this.nodes = nodes;
+    }
+
+    public HashMap<Integer, IdentityServer> getNodes() {
+        return nodes;
+    }
+
+    public String getCertiFilePath() {
+        return certiFilePath;
+    }
+
+    public String getKeyFilePath() {
+        return keyFilePath;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public IdentityServer(int id, int port, String address, String certiFilePath, String keyFilePath){
+        this.serverId = id;
         this.port = port;
+        this.address = address;
         this.certiFilePath = certiFilePath;
         this.keyFilePath = keyFilePath;
-        this.isAwaitTermination = isAwaitTermination;
+        this.isCoordinator = false;
     }
 
     public void start() throws IOException, InterruptedException {
@@ -29,48 +81,58 @@ public class IdentityServer {
                                     ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
                                     ApplicationProtocolNames.HTTP_2))
                     .build();
+            
+//            userAuthenticationImpl = new UserAuthenticationImpl(inSessionUser, clusterNodePorts, port);
             server = NettyServerBuilder.forPort(port)
-                    .addService(new UserAuthenticationImpl())
+                    .addService(new UserAuthenticationImpl(this))
+                    .addService(new ServerCommunicationImpl(this))
                     .sslContext(
                             sslContext
                     )
                     .build();
             server.start();
-            System.out.println("Server started at port "+server.getPort());
-            Process redisServer = IdentityUtil.startRedisServer();
-            if(redisServer != null)
-                System.out.println("Redis Server started in background at the default port 6379");
+            System.out.println("Server " + serverId +" started at port "+server.getPort());
+
             // Add a shutdown hook for redis server
             Runtime.getRuntime().addShutdownHook(new Thread( () -> {
-                    if(redisServer != null){
-                        redisServer.destroy();
-                        System.out.println("\nRedis server killed");
-                    }
-                }
+                updateSessionUsersToCoordinator();
+            }
             ));
-            if (isAwaitTermination)
-                server.awaitTermination();
+
+            server.awaitTermination();
         }catch (Exception e){
             System.out.println(e);
         }
 
     }
-
+    
     public void stop(){
-        if(server != null){
-            server.shutdownNow();
-        }
+        if(isCoordinator)
+            updateSessionUsersToCoordinator();
+        server.shutdownNow();
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        int port = Integer.parseInt(args[0]);
-        String certiFilePath = args[1];
-        String keyFilePath = args[2];
-        boolean isAwaitTermination = Boolean.parseBoolean(args[3]);
-//        int port = 5050;
-//        String certiFilePath = "certificate.cer";
-//        String keyFilePath = "identity.pem.pkcs8";
-        IdentityServer identityServer = new IdentityServer(port, certiFilePath, keyFilePath, isAwaitTermination);
-        identityServer.start();
+    public boolean isTerminated(){
+        return server.isTerminated();
+    }
+
+    public void updateSessionUsersToCoordinator(){
+        ConcurrentHashMap<String, UserModel> currentUsersOnCoordinator = new ConcurrentHashMap<>();
+        for(int nodeId : nodes.keySet()){
+            if(nodes.get(nodeId).inSessionUser.size() > 0){
+                currentUsersOnCoordinator.putAll(nodes.get(nodeId).inSessionUser);
+                nodes.get(nodeId).inSessionUser.clear();
+            }
+        }
+
+        // Update it on coordinator node
+        for(int nodeId : nodes.keySet()){
+            if(nodes.get(nodeId).isCoordinator){
+                nodes.get(nodeId).inSessionUser = currentUsersOnCoordinator;
+                break;
+            }
+        }
+        System.out.println("Checkpointing: Snapshot all the in session users to Coordinator server");
+
     }
 }

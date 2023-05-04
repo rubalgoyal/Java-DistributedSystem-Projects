@@ -63,12 +63,14 @@ public class IdentityServerTest {
         Assertions.assertTrue(expectedMessgae.equals(actualResponse));
     }
 
+
+
     private String deleteUser(UserAuthenticationServiceGrpc.UserAuthenticationServiceBlockingStub blockingStub,
                               String loginName,
                               String password){
 
-        Identity.ServerActions response = null;
-        Identity.User request = Identity.User.newBuilder().setLoginName(loginName).setPassword(password).build();
+        Identity.DeleteUser response = null;
+        Identity.DeleteUserName request = Identity.DeleteUserName.newBuilder().setLoginName(loginName).setPassword(password).build();
         try{
             response = blockingStub.delete(request);
         }
@@ -92,7 +94,6 @@ public class IdentityServerTest {
         String realName = "Test@1234";
         String password = "Test@1234";
         String wrongPassword = "Thhhhhhhhh";
-        Identity.ServerActions response = null;
         String outputResponse = null;
         Identity.User request = Identity.User.newBuilder().setLoginName(loginName).setRealName(realName).setPassword(password).build();
         blockingStub.create(request);
@@ -101,6 +102,5 @@ public class IdentityServerTest {
         deleteUser(blockingStub, loginName, password);
         return outputResponse;
     }
-
 
 }

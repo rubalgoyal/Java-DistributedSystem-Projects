@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="IdentityServerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2023-04-02T21:11:21" hostname="Vikass-Air" time="0.668">
+<testsuite name="IdentityServerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2023-05-01T03:54:28" hostname="Vikass-Air" time="4.889">
   <properties/>
-  <testcase name="checkPasswordAuthentication()" classname="IdentityServerTest" time="0.617"/>
-  <testcase name="checkUserExists()" classname="IdentityServerTest" time="0.048"/>
+  <testcase name="checkPasswordAuthentication()" classname="IdentityServerTest" time="0.583"/>
+  <testcase name="checkUserExists()" classname="IdentityServerTest" time="0.072"/>
+  <testcase name="testWriteLock()" classname="IdentityServerTest" time="2.128"/>
   <testcase name="checkValidCertificateException()" classname="IdentityServerTest" time="0.002"/>
+  <testcase name="testReadLock()" classname="IdentityServerTest" time="2.101"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
 SLF4J: Defaulting to no-operation (NOP) logger implementation
 SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+Exception in thread "Thread-3" io.grpc.StatusRuntimeException: UNKNOWN
+	at io.grpc.stub.ClientCalls.toStatusRuntimeException(ClientCalls.java:271)
+	at io.grpc.stub.ClientCalls.getUnchecked(ClientCalls.java:252)
+	at io.grpc.stub.ClientCalls.blockingUnaryCall(ClientCalls.java:165)
+	at UserAuthenticationServiceGrpc$UserAuthenticationServiceBlockingStub.writeRequest(UserAuthenticationServiceGrpc.java:208)
+	at IdentityServerTest$ModifyUser.run(IdentityServerTest.java:286)
+Exception in thread "Thread-5" io.grpc.StatusRuntimeException: UNKNOWN
+	at io.grpc.stub.ClientCalls.toStatusRuntimeException(ClientCalls.java:271)
+	at io.grpc.stub.ClientCalls.getUnchecked(ClientCalls.java:252)
+	at io.grpc.stub.ClientCalls.blockingUnaryCall(ClientCalls.java:165)
+	at UserAuthenticationServiceGrpc$UserAuthenticationServiceBlockingStub.writeRequest(UserAuthenticationServiceGrpc.java:208)
+	at IdentityServerTest$ModifyUser.run(IdentityServerTest.java:286)
 ]]></system-err>
 </testsuite>

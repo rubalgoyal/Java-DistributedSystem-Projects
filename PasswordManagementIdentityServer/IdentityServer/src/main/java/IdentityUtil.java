@@ -10,6 +10,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IdentityUtil {
     private static final int JEDIS_PORT = 6379;
@@ -106,7 +110,8 @@ public class IdentityUtil {
         return userId;
     }
 
-    public static void bulkInsert(ConcurrentHashMap<String, UserModel> inSessionUsers, boolean isNewUser){
+    public static boolean bulkInsert(ConcurrentHashMap<String, UserModel> inSessionUsers, boolean isNewUser){
+        AtomicBoolean isSuccessWrite = new AtomicBoolean(false);
 
         try {
             Jedis jedis = new Jedis(ADDRESS, JEDIS_PORT);
@@ -117,6 +122,7 @@ public class IdentityUtil {
                                 String valueJson = mapper.writeValueAsString(value);
                                 jedis.set(key, valueJson);
                                 // Increase the max user id key in the db
+                                isSuccessWrite.set(true);
                                 if(isNewUser)
                                     jedis.set(MAX_USER_ID, String.valueOf(value.getUserId() + 1));
                             } catch (JsonProcessingException e) {
@@ -131,9 +137,11 @@ public class IdentityUtil {
         } catch (JedisConnectionException e) {
             System.out.println(e);
         }
+
+        return isSuccessWrite.get();
     }
 
-    public static void insertUser(UserModel user, String userId, boolean isNewUser){
+    public static boolean insertUser(UserModel user, String userId, boolean isNewUser){
         ConcurrentHashMap<String, UserModel> insert = new ConcurrentHashMap<>();
         if (user.getUserId() == 0) {
             int nextId = getLastUserId();
@@ -141,7 +149,7 @@ public class IdentityUtil {
             userId = String.valueOf(nextId);
         }
         insert.put(userId, user);
-        bulkInsert(insert, isNewUser);
+        return bulkInsert(insert, isNewUser);
     }
 
     public static boolean isUserExist(int userId){
@@ -250,6 +258,35 @@ public class IdentityUtil {
             System.out.println(e);
         }
         return null;
+    }
+
+    public static String convertUserToString(UserModel userModel){
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(
+                "User ID - "+ userModel.getUserId() + "\n"
+                + "User Login Name - "+  userModel.getLoginName() + "\n"
+                + "User Old Login Name - "+ userModel.getOldLoginName() + "\n"
+                + "User Real Name - " + userModel.getRealName() + "\n"
+                + "User Created On- " + userModel.getCreatedOn()
+        );
+        return  stringBuilder.toString();
+    }
+
+    public static void jedisSaveTaskScheduler(){
+        Jedis jedis = new Jedis(ADDRESS, JEDIS_PORT);
+        ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+
+        executorService.scheduleWithFixedDelay(() -> {
+            jedis.save();
+        }, 0, 5, TimeUnit.MINUTES);
+        jedis.close();
+    }
+
+    public static void jedisSaveBeforeShutDown(){
+        Jedis jedis = new Jedis(ADDRESS, JEDIS_PORT);
+        jedis.save();
+        System.out.println("\nSaving all the RDB data before shutting down the server");
+        jedis.close();
     }
 
 }

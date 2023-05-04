@@ -1,40 +1,101 @@
 syntax = "proto3";
 
+message WriteRequest {
+  message CreateUserRequest{
+    string loginName = 1;
+    string realName = 2;
+    string password = 3;
+  }
 
+  message ModifyUserRequest{
+    string loginName = 1;
+    string password = 3;
+    string oldLoginName = 4;
+  }
 
-message User{
-  int32 userID = 1;
-  string loginName = 2;
-  string realName = 3;
-  string password = 4;
-  string oldLoginName = 5;
+  message DeleteUserRequest{
+    string loginName = 1;
+    string password = 2;
+  }
+
+  CreateUserRequest createUserRequest = 1;
+  ModifyUserRequest modifyUserRequest = 2;
+  DeleteUserRequest deleteUserRequest = 3;
 }
 
-message ServerActions{
-  int32 userID = 1;
-  string loginName = 2;
-  string realName = 3;
-  string password = 4;
-  string oldLoginName = 5;
-  string createdOn = 6;
-  bool alreadyExist = 7;
-  bool isDeleted = 8;
-  bool isPassMatch = 9;
+message WriteResponse {
+  message CreateUserResponse{
+      int32 userID = 1;
+      bool alreadyExist = 2;
+  }
+
+  message ModifyUserResponse{
+    string loginName = 1;
+    bool alreadyExist = 2;
+    bool isPassMatch = 4;
+  }
+
+  message DeleteUserResponse{
+    string loginName = 1;
+    bool alreadyExist = 2;
+    bool isDeleted = 3;
+    bool isPassMatch = 4;
+  }
+
+  CreateUserResponse createUserResponse = 1;
+  ModifyUserResponse modifyUserResponse = 2;
+  DeleteUserResponse deleteUserResponse = 3;
+}
+
+message ReadRequest {
+  message LookUpUserIdRequest{
+    int32 userID = 1;
+  }
+  
+  message LookUpLoginNameRequest{
+    string loginName = 1;
+  }
+
+  LookUpUserIdRequest lookUpUserIdRequest = 1;
+  LookUpLoginNameRequest lookUpLoginNameRequest = 2;
+  bool helpRequest = 3;
+  bool listIdsRequest = 4;
+  bool listLoginsRequest = 5;
+  bool allInfoRequest = 6;
+}
+
+message ReadResponse {
+  message AllInfoPrintResponse{
+    string allInfoPrint = 1;
+  }
+  
+  message UserIdsPrintResponse{
+    string userIdsPrint = 1;
+  }
+  
+  message UserLoginsPrintResponse{
+    string userLoginsPrint = 1;
+  }
+  
+  message IsUserExistResponse{
+    bool isUserExist = 1;
+    string printMessage = 2;
+  }
+
+  message HelpResponse{
+    string helpMessage = 1;
+  }
+  
+  AllInfoPrintResponse allInfoPrintResponse = 1;
+  UserIdsPrintResponse userIdsPrintResponse = 2;
+  UserLoginsPrintResponse userLoginsPrintResponse = 3;
+  IsUserExistResponse isUserExistResponse = 4;
+  HelpResponse helpResponse = 5;
 }
 
 message EmptyRequest{}
-message StringResponse{
-  string info = 1;
-}
 
 service UserAuthenticationService{
-  rpc create(User) returns (ServerActions);
-  rpc modify(User) returns (ServerActions);
-  rpc delete(User) returns(ServerActions);
-  rpc lookup(User) returns(ServerActions);
-  rpc reverseLookup(User) returns(ServerActions);
-  rpc listLogins(EmptyRequest) returns (StringResponse);
-  rpc listIds(EmptyRequest) returns (StringResponse);
-  rpc listAllInfo(EmptyRequest) returns (StringResponse);
-  rpc help(EmptyRequest) returns (StringResponse);
+  rpc writeRequest(WriteRequest) returns (WriteResponse);
+  rpc readRequest(ReadRequest) returns (ReadResponse);
 }

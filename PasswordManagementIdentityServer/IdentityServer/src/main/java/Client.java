@@ -34,7 +34,7 @@ public class Client {
     }
 
     public void createUser(String loginName, String realName, String password ){
-        Identity.ServerActions response = null;
+        Identity.NewUserId response = null;
         Identity.User request = Identity.User.newBuilder().setLoginName(loginName).setRealName(realName).setPassword(password).build();
 
         try{
@@ -50,7 +50,7 @@ public class Client {
     }
 
     public void modifyLoginName(String oldName, String newLoginName, String password){
-        Identity.ServerActions response = null;
+        Identity.ModifyUser response = null;
         Identity.User request = Identity.User.newBuilder().setOldLoginName(oldName).setLoginName(newLoginName).setPassword(password).build();
         try{
             response = blockingStub.modify(request);
@@ -70,8 +70,8 @@ public class Client {
     }
 
     public void deleteUser(String loginName, String password){
-        Identity.ServerActions response = null;
-        Identity.User request = Identity.User.newBuilder().setLoginName(loginName).setPassword(password).build();
+        Identity.DeleteUser response = null;
+        Identity.DeleteUserName request = Identity.DeleteUserName.newBuilder().setLoginName(loginName).setPassword(password).build();
         try{
             response = blockingStub.delete(request);
         }
@@ -83,6 +83,7 @@ public class Client {
                 System.out.println("Login name has been deleted from database");
             else
                 System.out.println("Password incorrect, please enter correct password");
+                System.out.println("Password incorrect, please enter correct password");
         }
         else if(!response.getLoginName().isEmpty() || response.getLoginName().equals(loginName) )
             System.out.println("Password incorrect, please enter correct password");
@@ -91,23 +92,23 @@ public class Client {
     }
 
     public void lookup(String loginName){
-        Identity.ServerActions response = null;
-        Identity.User request = Identity.User.newBuilder().setLoginName(loginName).build();
+        Identity.IsUserExist response = null;
+        Identity.LookUpLoginName request = Identity.LookUpLoginName.newBuilder().setLoginName(loginName).build();
         try{
             response = blockingStub.lookup(request);
         }
         catch(StatusRuntimeException e) {
             throw new RuntimeException(e);
         }
-        if(response.getAlreadyExist())
-            System.out.println("User entry of" +" " + loginName + " " +response);
+        if(response.getIsUserExist())
+            System.out.println("User entry of" +" " + loginName + " exists." + "\n" + response.getPrintMessage());
         else
             System.out.println("User does not exist in database");
 
     }
     public void reverseLookup(int userId){
-        Identity.ServerActions response = null;
-        Identity.User request = Identity.User.newBuilder().setUserID(userId).build();
+        Identity.IsUserExist response = null;
+        Identity.LookUpUserId request = Identity.LookUpUserId.newBuilder().setUserID(userId).build();
         try{
             response = blockingStub.reverseLookup(request);
         }
@@ -115,13 +116,13 @@ public class Client {
             throw new RuntimeException(e);
         }
 
-        if(response.getAlreadyExist())
-            System.out.println("User entry of" +" " + userId + " " +response);
+        if(response.getIsUserExist())
+            System.out.println("User entry of" +" " + userId + " exists." + "\n" + response.getPrintMessage());
         else
             System.out.println("User does not exist in database");
     }
     public void listAllInfo(){
-        Identity.StringResponse response = null;
+        Identity.AllInfoPrint response = null;
         Identity.EmptyRequest request = Identity.EmptyRequest.newBuilder().build();
         try{
             response = blockingStub.listAllInfo(request);
@@ -129,10 +130,10 @@ public class Client {
         catch(StatusRuntimeException e){
             throw new RuntimeException(e);
         }
-        System.out.println(response.getInfo());
+        System.out.println(response.getAllInfoPrint());
     }
     public void listLogins(){
-        Identity.StringResponse response = null;
+        Identity.UserLoginsPrint response = null;
         Identity.EmptyRequest request = Identity.EmptyRequest.newBuilder().build();
 
         try{
@@ -141,11 +142,11 @@ public class Client {
         catch(StatusRuntimeException e){
             throw new RuntimeException(e);
         }
-        System.out.println(response.getInfo());
+        System.out.println(response.getUserLoginsPrint());
     }
 
     public void listIds(){
-        Identity.StringResponse response = null;
+        Identity.UserIdsPrint response = null;
         Identity.EmptyRequest request = Identity.EmptyRequest.newBuilder().build();
         try{
             response = blockingStub.listIds(request);
@@ -153,11 +154,11 @@ public class Client {
         catch(StatusRuntimeException e){
             throw new RuntimeException(e);
         }
-        System.out.println(response.getInfo());
+        System.out.println(response.getUserIdsPrint());
     }
 
     public void getHelp(){
-        Identity.StringResponse response = null;
+        Identity.HelpResponse response = null;
         Identity.EmptyRequest request = Identity.EmptyRequest.newBuilder().build();
         try{
             response = blockingStub.help(request);
@@ -165,12 +166,13 @@ public class Client {
         catch(StatusRuntimeException e){
             throw new RuntimeException(e);
         }
-        System.out.println(response.getInfo());
+        System.out.println(response.getHelpMessage());
     }
 
     public void run() {
         Scanner scanner = new Scanner(System.in);
         while (true) {
+            System.out.println("\n");
             String[] userInput = scanner.nextLine().split(" ");
             if (userInput[0].equals("create")) {
                 if (userInput.length < 4) {
@@ -204,7 +206,12 @@ public class Client {
                     System.out.println("Please provide user id along with reverselookup");
                     continue;
                 }
-                reverseLookup(Integer.parseInt(userInput[1]));
+                try{
+                    reverseLookup(Integer.parseInt(userInput[1]));
+                } catch (NumberFormatException e){
+                    System.out.println("Please enter integer for user ID");
+                }
+
             } else if (userInput[0].equals("listLogins")) {
                 listLogins();
             }
