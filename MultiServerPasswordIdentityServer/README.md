@@ -6,6 +6,8 @@ Rubal Goyal (Graduate student, Sp23 - CS 555 - Distributed Systems )**<br>
 #### Design document
 `CS_455_555_Project_3_Design_Paper.pdf` is our proposed design for this project
 
+Video Link -> https://youtu.be/DxU2OLj4X6U
+
 
 # Implemenation Explanation
 ## Definitions
