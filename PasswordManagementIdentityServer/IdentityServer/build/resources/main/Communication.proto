@@ -1,0 +1,17 @@
+// proto file for communication among servers
+syntax = "proto3";
+
+message Ping{
+  string message = 1;
+}
+
+message Pong{
+  string message = 1;
+  int32 port = 2;
+  string address = 3;
+}
+
+service GetCoordinator{
+  rpc getCoordinator(Ping) returns (Pong);
+}
+

@@ -1,0 +1,29 @@
+// proto file for communication among servers
+syntax = "proto3";
+
+message Ping{
+  string message = 1;
+}
+
+message Pong{
+  string message = 1;
+}
+
+message Election{
+  int32 port = 1;
+  int32 nodeId = 2;
+}
+
+message Empty{
+
+}
+
+message CheckCoordinator{
+  bool isCoordinator = 1;
+}
+
+service ServerCommunication{
+  rpc checkStatus(Ping) returns (Pong);
+  rpc election(Election) returns (Empty);
+  rpc checkCoordinator(Empty) returns (CheckCoordinator);
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message Request{
+}
+
+message Response{
+  int32 coordinatorPort = 1;
+  int32 coordinatorNodeId = 2;
+}
+
+service ClientCommunication{
+  rpc getCoordinator(Request) returns(Response);
+}
