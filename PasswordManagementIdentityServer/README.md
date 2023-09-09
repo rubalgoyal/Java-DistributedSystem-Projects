@@ -1,4 +1,4 @@
-# Programming Project-2 Identity Server with GRPC
+# Identity Server with GRPC
 Rubal Goyal (Graduate student, Sp23 - CS 555 - Distributed Systems )<br>
 Below are my key learnings from this project:
 1. Encrypted communication between server and client. I learned how organizations might be authenticating the requests and preventing any cybersecurity attackes.
